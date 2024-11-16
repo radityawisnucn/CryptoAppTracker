@@ -1,4 +1,3 @@
-// app/tabs/dashboard.tsx
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
@@ -20,55 +19,61 @@ const Dashboard = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState<number>(1);
-  const [limit] = useState<number>(10); // Jumlah crypto per halaman
+  const [limit] = useState<number>(10);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
-  const [hasMore, setHasMore] = useState<boolean>(true); // Apakah masih ada data lebih banyak
-  const [totalCount, setTotalCount] = useState<number>(0); // Total jumlah cryptocurrency
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [usdToIdrRate, setUsdToIdrRate] = useState<number | null>(null);
+
+  // Fungsi untuk memformat angka menjadi format IDR
+  const formatIDR = (amount: number) => {
+    return `Rp ${amount.toLocaleString("id-ID")}`;
+  };
+
+  useEffect(() => {
+    const fetchExchangeRate = async () => {
+      try {
+        const response = await fetch(
+          "https://api.currencyapi.com/v3/latest?apikey=cur_live_Bzt0fvNpkB1iWxGsL1Lf2NhRn0bYFwEPj7lm1nZk&currencies=IDR%2CUSD"
+        );
+        const data = await response.json();
+        const rate = data.data.IDR.value;
+        setUsdToIdrRate(rate);
+      } catch (error) {
+        console.error("Gagal mengambil nilai tukar USD ke IDR:", error);
+        setError("Gagal mengambil nilai tukar. Silakan coba lagi nanti.");
+      }
+    };
+
+    fetchExchangeRate();
+  }, []);
 
   useEffect(() => {
     const getCryptosAndIcons = async () => {
       try {
-        // Mengambil daftar cryptocurrency dengan paginasi
         const response = await fetchCryptocurrencyList(
           (page - 1) * limit + 1,
           limit
         );
-        console.log("Data Cryptocurrency:", response.data); // Untuk debugging
-
-        // Set totalCount dari API
         setTotalCount(response.status.total_count);
-
-        // Jika tidak ada data lagi, set hasMore ke false
         if (response.data.length === 0) {
           setHasMore(false);
           return;
         }
 
-        // Mengambil ID dari cryptocurrency yang diambil
         const ids = response.data.map((crypto) => crypto.id);
-
-        // Mengambil detail cryptocurrency, termasuk logo
         const details = await fetchCryptocurrencyDetails(ids);
-        console.log("Data Cryptocurrency Details:", details); // Untuk debugging
-
-        // Membuat pemetaan ID ke URL logo
         const iconMap: { [key: number]: string } = {};
         ids.forEach((id) => {
           if (details[id] && details[id].logo) {
             iconMap[id] = details[id].logo;
           } else {
-            // Gunakan placeholder jika logo tidak tersedia
-            iconMap[id] = "https://via.placeholder.com/40"; // URL placeholder yang valid
+            iconMap[id] = "https://via.placeholder.com/40";
           }
         });
-
-        // Menambahkan ikon ke state
         setIcons((prevIcons) => ({ ...prevIcons, ...iconMap }));
-
-        // Menambahkan data baru ke state cryptos
         setCryptos((prevCryptos) => [...prevCryptos, ...response.data]);
 
-        // Cek apakah sudah mencapai totalCount
         if (
           cryptos.length + response.data.length >=
           response.status.total_count
@@ -102,44 +107,26 @@ const Dashboard = () => {
     setHasMore(true);
     setTotalCount(0);
     try {
-      // Mengambil ulang data
       const response = await fetchCryptocurrencyList(1, limit);
-      console.log("Data Cryptocurrency:", response.data); // Untuk debugging
-
-      // Set totalCount dari API
       setTotalCount(response.status.total_count);
-
-      // Jika tidak ada data lagi, set hasMore ke false
       if (response.data.length === 0) {
         setHasMore(false);
         return;
       }
 
-      // Mengambil ID dari cryptocurrency yang diambil
       const ids = response.data.map((crypto) => crypto.id);
-
-      // Mengambil detail cryptocurrency, termasuk logo
       const details = await fetchCryptocurrencyDetails(ids);
-      console.log("Data Cryptocurrency Details:", details); // Untuk debugging
-
-      // Membuat pemetaan ID ke URL logo
       const iconMap: { [key: number]: string } = {};
       ids.forEach((id) => {
         if (details[id] && details[id].logo) {
           iconMap[id] = details[id].logo;
         } else {
-          // Gunakan placeholder jika logo tidak tersedia
-          iconMap[id] = "https://via.placeholder.com/40"; // URL placeholder yang valid
+          iconMap[id] = "https://via.placeholder.com/40";
         }
       });
-
-      // Menambahkan ikon ke state
       setIcons(iconMap);
-
-      // Mengatur ulang data cryptocurrency
       setCryptos(response.data);
 
-      // Cek apakah sudah mencapai totalCount
       if (response.data.length >= response.status.total_count) {
         setHasMore(false);
       }
@@ -154,13 +141,16 @@ const Dashboard = () => {
 
   const renderItem = useCallback(
     ({ item }: { item: CryptoData }) => {
-      const price = item.quote?.USD?.price;
+      const priceUSD = item.quote?.USD?.price;
       const percentChange = item.quote?.USD?.percent_change_24h;
-
       const isPositive = percentChange >= 0;
 
-      // Mendapatkan URL logo dari pemetaan icons
-      const logoUrl = icons[item.id] || "https://via.placeholder.com/40"; // Placeholder jika tidak ada
+      const priceIDR =
+        priceUSD !== undefined && usdToIdrRate !== null
+          ? formatIDR(priceUSD * usdToIdrRate)
+          : "N/A";
+
+      const logoUrl = icons[item.id] || "https://via.placeholder.com/40";
 
       return (
         <View style={styles.cryptoCard}>
@@ -173,9 +163,14 @@ const Dashboard = () => {
             <Text style={styles.name}>{item.name}</Text>
           </View>
           <View style={styles.cryptoDetails}>
-            <Text style={styles.price}>
-              {price !== undefined ? `$${price.toFixed(2)}` : "N/A"}
-            </Text>
+            <View>
+              <Text style={styles.price}>
+                {priceUSD !== undefined ? `$ ${priceUSD.toFixed(2)}` : "N/A"}
+              </Text>
+              <Text style={styles.priceIDR}>
+                {priceIDR !== "N/A" ? `${priceIDR}` : "N/A"}
+              </Text>
+            </View>
             <Text
               style={[
                 styles.change,
@@ -190,7 +185,7 @@ const Dashboard = () => {
         </View>
       );
     },
-    [icons]
+    [icons, usdToIdrRate]
   );
 
   const renderFooter = () => {
@@ -309,8 +304,13 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#2cff05",
   },
+  priceIDR: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#2cff05",
+  },
   change: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: "500",
   },
   loaderContainer: {

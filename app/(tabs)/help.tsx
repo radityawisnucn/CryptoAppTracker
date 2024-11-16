@@ -91,6 +91,10 @@ const Help = () => {
           working to establish guidelines and regulations to protect consumers
           and prevent illegal activities.
         </Text>
+
+        <View style={styles.cretorContainer}>
+          <Text style={styles.creator}>Raditya Wisnu C N @2024</Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -141,6 +145,19 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: "#cccccc",
     textAlign: "justify",
+    marginBottom: 12,
+  },
+  cretorContainer: {
+    paddingTop: 20,
+    width: "100%",
+    alignItems: "center",
+  },
+  creator: {
+    fontSize: 16,
+    marginTop: 4,
+    color: "#9f9f9f",
+    fontWeight: "600",
+    textAlign: "center",
     marginBottom: 12,
   },
 });
