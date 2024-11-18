@@ -1,7 +1,7 @@
 // api/client.ts
 import axios from "axios";
 
-const API_KEY = "6df9c4e8-11e1-4530-8089-e8acc8b5a569"; // Ganti dengan API Key Anda
+const API_KEY = "6df9c4e8-11e1-4530-8089-e8acc8b5a569"; 
 const BASE_URL = "https://pro-api.coinmarketcap.com/v1";
 
 const client = axios.create({
